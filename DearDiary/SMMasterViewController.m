@@ -12,8 +12,11 @@
 #import "SMLoginViewController.h"
 
 @interface SMMasterViewController () {
+    
     NSMutableArray *_posts;
+    
 }
+
 @end
 
 @implementation SMMasterViewController
@@ -45,7 +48,7 @@
 }
 
 
--(void)viewWillAppear:(BOOL)animated {
+- (void)viewWillAppear:(BOOL)animated {
     
     [super viewWillAppear:animated];
     
@@ -105,7 +108,6 @@
                 }
                 
             }];
-    
     
 }
 
