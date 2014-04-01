@@ -55,33 +55,17 @@
         
         NSLog(@"Logged in");
         
-        //        [SMPost getObjectsWithCompletion:^(NSArray *objects, NSError *error) {
-        //
-        //            _posts = [objects mutableCopy];
-        //            [self.tableView reloadData];
-        //
-        //        }];
-        
-        [SMPost getObjectsWithParams:@{kPageNumberKey : @0, kPageSizeKey : @4}
-                          completion:^(NSArray *objects, NSError *error) {
-                              
-                              
-                              if (error == nil) {
-                                  
-                                  _posts = [objects mutableCopy];
-                                  [self.tableView reloadData];
-                                  
-                              } else {
-                                  
-                                  NSLog(@"error %@", error.localizedDescription);
-                                  
-                              }
-                              
-                          }];
+        [SMPost getObjectsWithCompletion:^(NSArray *objects, NSError *error) {
+
+            _posts = [objects mutableCopy];
+            [self.tableView reloadData];
+
+        }];
+    
         
     } else {
         
-        NSLog(@"need to login");
+        NSLog(@"need to login/signup");
         SMLoginViewController *loginViewController = [[SMLoginViewController alloc] initWithNibName:@"SMLoginViewController"
                                                                                              bundle:nil];
         [self.navigationController presentViewController:loginViewController

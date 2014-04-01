@@ -35,12 +35,9 @@
 
 - (void)configureView {
     
-    if (self.post) {
-        
-        self.titleField.text = self.post.postTitle;
-        self.bodyTextView.text = self.post.postBody;
-        
-    }
+    self.titleField.text = self.post.postTitle;
+    self.bodyTextView.text = self.post.postBody;
+    
 }
 
 - (void)viewDidLoad
