@@ -65,6 +65,17 @@
 
         }];
         
+        // Example with query criteria        
+//        [SMPost getObjectsWithParams:@{@"where" : @"postTitle='aaa'"}
+//                          completion:^(NSArray *objects, NSError *error) {
+//                              
+//                              NSLog(@"objects = %@", objects);
+//                              _posts = [objects mutableCopy];
+//                              [self.tableView reloadData];
+//                              
+//                          }];
+
+        
     } else {
         
         NSLog(@"need to login/signup");
