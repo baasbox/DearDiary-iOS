@@ -1,9 +1,17 @@
-//
-//  BAAObject.m
-//
-//  Created by Cesare Rocchi on 8/21/13.
-//  Copyright (c) 2013 Cesare Rocchi. All rights reserved.
-//
+/*
+ * Copyright (C) 2014. BaasBox
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and limitations under the License.
+ */
 
 #import "BAAObject.h"
 #import "BAAClient.h"
@@ -88,7 +96,7 @@
     
 }
 
--(NSDictionary*) objectAsDictionary {
+- (NSDictionary*) objectAsDictionary {
     
     NSMutableDictionary *dict = [[NSMutableDictionary alloc] initWithCapacity:0];
     
@@ -97,23 +105,40 @@
     objc_property_t *properties = class_copyPropertyList([self class], &outCount);
     
     for(i = 0; i < outCount; i++) {
+        
         objc_property_t property = properties[i];
         const char *propName = property_getName(property);
+        
         if(propName) {
             NSString *propertyName = [NSString stringWithUTF8String:propName];
-            NSValue *value = [self valueForKey:propertyName];
+            id value = [self valueForKey:propertyName];
             
-            if ([value isKindOfClass:[NSArray class]]) { // TODO: review this
+            if ([value isKindOfClass:[NSArray class]]) {
                 
-                NSArray *a = (NSArray *)value;
+                NSArray *array = (NSArray *)value;
                 NSMutableArray *tmp = [NSMutableArray array];
-                for (BAAObject *b in a) {
-                
-                    [tmp addObject:[b objectAsDictionary]];
+                for (id object in array) {
+                    
+                    if ([object respondsToSelector:@selector(objectAsDictionary)]) {
+                        
+                        [tmp addObject:[object objectAsDictionary]];
+                        
+                    } else {
+                        
+                        [tmp addObject:object];
+                        
+                    }
                     
                 }
                 
                 [dict setValue:tmp forKey:propertyName];
+                
+            }
+            
+            else if ([value respondsToSelector:@selector(objectAsDictionary)]) {
+                
+                [dict setValue:[value objectAsDictionary]
+                        forKey:propertyName];
                 
             }
             
@@ -128,6 +153,7 @@
     free(properties);
     
     return dict;
+    
 }
 
 - (NSString *)jsonString {

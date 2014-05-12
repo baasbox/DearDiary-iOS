@@ -1,11 +1,19 @@
-//
-//  BAAClient.m
-//
-//  Created by Cesare Rocchi on 8/14/13.
-//  Copyright (c) 2013 Cesare Rocchi. All rights reserved.
-//
+/*
+ * Copyright (C) 2014. BaasBox
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and limitations under the License.
+ */
 
-#define VERSION @"0.7.4"
+#define VERSION @"0.8"
 
 #import "BAAClient.h"
 #import "BaasBox.h"
@@ -76,7 +84,7 @@ static NSString * BAAPercentEscapedQueryStringValueFromStringWithEncoding(NSStri
 extern NSArray * BAAQueryStringPairsFromDictionary(NSDictionary *dictionary);
 extern NSArray * BAAQueryStringPairsFromKeyAndValue(NSString *key, id value);
 
-static NSString * AFQueryStringFromParametersWithEncoding(NSDictionary *parameters, NSStringEncoding stringEncoding) {
+static NSString * BAAQueryStringFromParametersWithEncoding(NSDictionary *parameters, NSStringEncoding stringEncoding) {
     NSMutableArray *mutablePairs = [NSMutableArray array];
     for (BAAQueryStringPair *pair in BAAQueryStringPairsFromDictionary(parameters)) {
         [mutablePairs addObject:[pair URLEncodedStringValueWithEncoding:stringEncoding]];
@@ -192,7 +200,6 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                    user.authenticationToken = token;
                    self.currentUser = user;
                    [self saveUserToDisk:user];
-                   
                    completionHander(YES, nil);
                    
                } else {
@@ -1270,7 +1277,7 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     BAAMutableURLRequest *request = [[BAAMutableURLRequest alloc] initWithURL:url];
     
     if ([path isEqualToString:@"login"]) { // Hack. Login should support json
-     
+        
         request.contentType = BAAContentTypeForm;
         
     }
@@ -1295,7 +1302,7 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     }
     
     NSString *charset = (__bridge NSString *)CFStringConvertEncodingToIANACharSetName(CFStringConvertNSStringEncodingToEncoding(NSUTF8StringEncoding));
-    NSString *query = AFQueryStringFromParametersWithEncoding(parameters, NSUTF8StringEncoding);
+    NSString *query = BAAQueryStringFromParametersWithEncoding(parameters, NSUTF8StringEncoding);
     
     if (mutableRequest.contentType == BAAContentTypeForm) {
         
@@ -1331,19 +1338,39 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     [[self.session dataTaskWithRequest:request
                      completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
                          
-                         if (error == nil) {
-                             NSDictionary *jsonObject = [NSJSONSerialization JSONObjectWithData:data
-                                                                                        options:kNilOptions
-                                                                                          error:nil];
-                             success(jsonObject);
+                         NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
+                         NSDictionary *jsonObject = [NSJSONSerialization JSONObjectWithData:data
+                                                                                    options:kNilOptions
+                                                                                      error:nil];
+                         
+                         if (httpResponse.statusCode >= 400) {
                              
-                         } else {
-                             
+                             NSError *error = [BaasBox authenticationErrorForResponse:jsonObject];                            
                              failure(error);
+                             return;
                              
                          }
                          
-                     }] resume];
+                         if (error == nil) {
+                             
+                             NSString *contentType = [httpResponse.allHeaderFields objectForKey:@"Content-type"];
+                             if ([contentType hasPrefix:@"image/"]) {
+                                 
+                                 success(data);
+                                 
+                             } else {
+                             
+                                 success(jsonObject);
+                                 
+                             }
+                             
+                         } else {
+                         
+                             failure(error);
+                     
+                         }
+      
+      }] resume];
     
 }
 
@@ -1359,10 +1386,21 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
 	[[self.session dataTaskWithRequest:request
                      completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
                          
+                         NSHTTPURLResponse *r = (NSHTTPURLResponse*)response;
+                         NSDictionary *jsonObject = [NSJSONSerialization JSONObjectWithData:data
+                                                                                    options:kNilOptions
+                                                                                      error:nil];
+                         
+                         if (r.statusCode >= 400) {
+                             
+                             NSError *error = [BaasBox authenticationErrorForResponse:jsonObject];
+                             failure(error);
+                             return;
+                             
+                         }
+                         
                          if (error == nil) {
-                             NSDictionary *jsonObject = [NSJSONSerialization JSONObjectWithData:data
-                                                                                        options:kNilOptions
-                                                                                          error:nil];
+
                              success(jsonObject);
                              
                          } else {
@@ -1386,10 +1424,21 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     [[self.session dataTaskWithRequest:request
                      completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
                          
+                         NSHTTPURLResponse *r = (NSHTTPURLResponse*)response;
+                         NSDictionary *jsonObject = [NSJSONSerialization JSONObjectWithData:data
+                                                                                    options:kNilOptions
+                                                                                      error:nil];
+                         
+                         if (r.statusCode >= 400) {
+                             
+                             NSError *error = [BaasBox authenticationErrorForResponse:jsonObject];
+                             failure(error);
+                             return;
+                             
+                         }
+                         
                          if (error == nil) {
-                             NSDictionary *jsonObject = [NSJSONSerialization JSONObjectWithData:data
-                                                                                        options:kNilOptions
-                                                                                          error:nil];
+
                              success(jsonObject);
                              
                          } else {
@@ -1413,10 +1462,21 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     [[self.session dataTaskWithRequest:request
                      completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
                          
+                         NSHTTPURLResponse *r = (NSHTTPURLResponse*)response;
+                         NSDictionary *jsonObject = [NSJSONSerialization JSONObjectWithData:data
+                                                                                    options:kNilOptions
+                                                                                      error:nil];
+                         
+                         if (r.statusCode >= 400) {
+                             
+                             NSError *error = [BaasBox authenticationErrorForResponse:jsonObject];
+                             failure(error);
+                             return;
+                             
+                         }
+                         
                          if (error == nil) {
-                             NSDictionary *jsonObject = [NSJSONSerialization JSONObjectWithData:data
-                                                                                        options:kNilOptions
-                                                                                          error:nil];
+
                              success(jsonObject);
                              
                          } else {
