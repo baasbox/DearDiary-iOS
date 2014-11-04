@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
-#define VERSION @"0.8"
-
 #import "BAAClient.h"
 #import "BaasBox.h"
 #import "BAAMutableURLRequest.h"
 
 NSString * const kPageNumberKey = @"page";
 NSString * const kPageSizeKey = @"recordsPerPage";
+NSString * const kSkipKey = @"skip";
 NSInteger const kPageLength = 50;
 
 NSString * const kAclAnonymousRole = @"anonymous";
@@ -30,6 +29,10 @@ NSString * const kAclAdministratorRole = @"administrator";
 NSString * const kAclReadPermission = @"read";
 NSString * const kAclDeletePermission = @"delete";
 NSString * const kAclUpdatePermission = @"update";
+NSString * const kAclAllPermission = @"all";
+
+NSString * const kPushNotificationMessageKey = @"message";
+NSString * const kPushNotificationCustomPayloadKey = @"custom";
 
 static NSString * const boundary = @"BAASBOX_BOUNDARY_STRING";
 
@@ -135,7 +138,6 @@ NSArray * BAAQueryStringPairsFromKeyAndValue(NSString *key, id value) {
 @property (nonatomic, copy) NSString *appCode;
 @property (nonatomic, strong) NSURLSession *session;
 
-- (void) saveUserToDisk:(BAAUser *)user;
 - (BAAUser *) loadUserFromDisk;
 - (void)_initSession;
 
@@ -186,7 +188,7 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
 
 - (void)authenticateUser:(NSString *)username
                 password:(NSString *)password
-              completion:(BAABooleanResultBlock)completionHander {
+              completion:(BAABooleanResultBlock)completionHandler {
     
     [self postPath:@"login"
         parameters:@{@"username" : username, @"password": password, @"appcode" : self.appCode}
@@ -200,7 +202,7 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                    user.authenticationToken = token;
                    self.currentUser = user;
                    [self saveUserToDisk:user];
-                   completionHander(YES, nil);
+                   completionHandler(YES, nil);
                    
                } else {
                    
@@ -210,13 +212,13 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                    NSError *error = [NSError errorWithDomain:[BaasBox errorDomain]
                                                         code:[BaasBox errorCode]
                                                     userInfo:errorDetail];
-                   completionHander(NO, error);
+                   completionHandler(NO, error);
                    
                }
                
            } failure:^(NSError *error) {
                
-               completionHander(NO, error);
+               completionHandler(NO, error);
                
            }];
     
@@ -224,10 +226,35 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
 
 - (void)createUserWithUsername:(NSString *)username
                       password:(NSString *)password
-                    completion:(BAABooleanResultBlock)completionHander {
+                    completion:(BAABooleanResultBlock)completionHandler {
+    
+    [self createUserWithUsername:username
+                        password:password
+                visibleByTheUser:nil
+                visibleByFriends:nil
+        visibleByRegisteredUsers:nil
+         visibleByAnonymousUsers:nil
+                      completion:completionHandler];
+    
+}
+
+- (void)createUserWithUsername:(NSString *)username
+                      password:(NSString *)password
+              visibleByTheUser:(NSDictionary *)visibleByTheUser
+              visibleByFriends:(NSDictionary *)visibleByFriends
+      visibleByRegisteredUsers:(NSDictionary *)visibleByRegisteredUsers
+       visibleByAnonymousUsers:(NSDictionary *)visibleByAnonymousUsers
+                    completion:(BAABooleanResultBlock)completionHandler {
     
     [self postPath:@"user"
-        parameters:@{@"username" : username, @"password": password, @"appcode" : self.appCode}
+        parameters:@{
+                     @"username" : username,
+                     @"password": password,
+                     @"appcode" : self.appCode,
+                     @"visibleByTheUser" : visibleByTheUser ?: @{},
+                     @"visibleByFriends" : visibleByFriends ?: @{},
+                     @"visibleByRegisteredUsers" : visibleByRegisteredUsers ?: @{},
+                     @"visibleByAnonymousUsers" : visibleByAnonymousUsers ?: @{}}
            success:^(NSDictionary *responseObject) {
                
                NSString *token = responseObject[@"data"][@"X-BB-SESSION"];
@@ -239,7 +266,7 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                    self.currentUser = user;
                    [self saveUserToDisk:user];
                    
-                   completionHander(YES, nil);
+                   completionHandler(YES, nil);
                    
                } else {
                    
@@ -249,19 +276,19 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                    NSError *error = [NSError errorWithDomain:[BaasBox errorDomain]
                                                         code:[BaasBox errorCode]
                                                     userInfo:errorDetail];
-                   completionHander(NO, error);
+                   completionHandler(NO, error);
                    
                }
                
            } failure:^(NSError *error) {
                
-               completionHander(NO, error);
+               completionHandler(NO, error);
                
            }];
     
 }
 
-- (void) logoutWithCompletion:(BAABooleanResultBlock)completionHander {
+- (void) logoutWithCompletion:(BAABooleanResultBlock)completionHandler {
     
     NSString *path = @"logout";
     
@@ -273,16 +300,17 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
         parameters:nil
            success:^(id responseObject) {
                
-               if (completionHander) {
+               if (completionHandler) {
                    self.currentUser = nil;
                    [self saveUserToDisk:self.currentUser];
-                   completionHander(YES, nil);
+                   completionHandler(YES, nil);
                }
                
            } failure:^(NSError *error) {
                
-               if (completionHander)
-                   completionHander(NO, error);
+               if (completionHandler) {
+                   completionHandler(NO, error);
+               }
                
            }];
     
@@ -312,7 +340,7 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                   NSError *error = [NSError errorWithDomain:[BaasBox errorDomain]
                                                        code:[BaasBox errorCode]
                                                    userInfo:errorDetail];
-                  completionBlock(NO, error);
+                  completionBlock(nil, error);
                   
               }
               
@@ -377,7 +405,6 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                
                completionBlock(nil, error);
                
-               
            }];
     
 }
@@ -418,6 +445,28 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                  
                  
              }];
+    
+}
+
+- (void) fetchCountForObjects:(BAAObject *)object completion:(BAAIntegerResultBlock)completionBlock {
+    
+    [self getPath:[NSString stringWithFormat:@"%@/count", object.collectionName]
+       parameters:nil
+          success:^(id responseObject) {
+              
+              NSInteger result = [responseObject[@"data"][@"count"] intValue];
+              
+              if (completionBlock) {
+                  completionBlock(result, nil);
+              }
+              
+          } failure:^(NSError *error) {
+              
+              if (completionBlock) {
+                  completionBlock(-1, error);
+              }
+              
+          }];
     
 }
 
@@ -470,9 +519,6 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     NSURLSession *s = [NSURLSession sharedSession];
     NSString *path = [NSString stringWithFormat:@"file/%@", file.fileId];
     BAAMutableURLRequest *request = [self requestWithMethod:@"GET" URLString:path parameters:parameters];
-    NSLog(@"request %@", request);
-    //    [request setValue:@"image/jpeg"
-    //          forHTTPHeaderField:@"Content-Type"];
     NSURLSessionDataTask *task = [s dataTaskWithRequest:request
                                       completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
                                           
@@ -489,7 +535,6 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                                               
                                           } else {
                                               
-                                              NSLog(@"Got response %@ with error %@.\n", response, error);
                                               completionBlock(nil, error);
                                               
                                           }
@@ -562,7 +607,7 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                                  NSDictionary *userInfo = @{
                                                             NSLocalizedDescriptionKey: d[@"message"],
                                                             NSLocalizedFailureReasonErrorKey: d[@"message"],
-                                                            NSLocalizedRecoverySuggestionErrorKey: @"Make sure that ACL roles and usernames exist on the backed."
+                                                            NSLocalizedRecoverySuggestionErrorKey: @"Make sure that ACL roles and usernames exist on the backend."
                                                             };
                                  NSError *error = [NSError errorWithDomain:[BaasBox errorDomain]
                                                                       code:[BaasBox errorCode]
@@ -657,36 +702,16 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
 
 #pragma mark - Acl
 
-- (void) grantAccess:(BAAFile *)file toRole:(NSString *)roleName accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock {
+- (void) grantAccess:(id)element toRole:(NSString *)roleName accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock {
     
-    NSString *path = [NSString stringWithFormat:@"file/%@/%@/role/%@", file.fileId, access, roleName];
-    
-    [self putPath:path
-       parameters:nil
-          success:^(id responseObject) {
-              
-              completionBlock(file, nil);
-              
-          } failure:^(NSError *error) {
-              
-              if (completionBlock) {
-                  completionBlock(nil, error);
-              }
-              
-          }];
-    
-}
-
-- (void) grantAccess:(BAAFile *)file toUser:(NSString *)username accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock {
-    
-    NSString *path = [NSString stringWithFormat:@"file/%@/%@/user/%@", file.fileId, access, username];
+    NSString *path = [self buildPathForRoleACL:element forAccessType:access roleName:roleName];
     
     [self putPath:path
        parameters:nil
           success:^(id responseObject) {
               
               if (completionBlock) {
-                  completionBlock(file, nil);
+                  completionBlock(element, nil);
               }
               
           } failure:^(NSError *error) {
@@ -699,16 +724,38 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     
 }
 
-- (void) revokeAccess:(BAAFile *)file toRole:(NSString *)roleName accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock {
+- (void) grantAccess:(id)element toUser:(NSString *)username accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock {
     
-    NSString *path = [NSString stringWithFormat:@"file/%@/%@/role/%@", file.fileId, access, roleName];
+    NSString *path = [self buildPathForUserACL:element forAccessType:access username:username];
+    
+    [self putPath:path
+       parameters:nil
+          success:^(id responseObject) {
+              
+              if (completionBlock) {
+                  completionBlock(element, nil);
+              }
+              
+          } failure:^(NSError *error) {
+              
+              if (completionBlock) {
+                  completionBlock(nil, error);
+              }
+              
+          }];
+    
+}
+
+- (void) revokeAccess:(id)element toRole:(NSString *)roleName accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock {
+    
+    NSString *path = [self buildPathForRoleACL:element forAccessType:access roleName:roleName];
     
     [self deletePath:path
           parameters:nil
              success:^(id responseObject) {
                  
                  if (completionBlock) {
-                     completionBlock(file, nil);
+                     completionBlock(element, nil);
                  }
                  
              } failure:^(NSError *error) {
@@ -721,16 +768,16 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     
 }
 
-- (void) revokeAccess:(BAAFile *)file toUser:(NSString *)username accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock {
+- (void) revokeAccess:(id)element toUser:(NSString *)username accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock {
     
-    NSString *path = [NSString stringWithFormat:@"file/%@/%@/user/%@", file.fileId, access, username];
+    NSString *path = [self buildPathForUserACL:element forAccessType:access username:username];
     
     [self deletePath:path
           parameters:nil
              success:^(id responseObject) {
                  
                  if (completionBlock) {
-                     completionBlock(file, nil);
+                     completionBlock(element, nil);
                  }
                  
              } failure:^(NSError *error) {
@@ -740,6 +787,48 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
                  }
                  
              }];
+    
+}
+
+
+// Both methods are ugly, but at the moment let's live with these
+- (NSString *) buildPathForRoleACL:(id)element forAccessType:(NSString *)accessType roleName:(NSString *)role {
+
+    NSString *path;
+    
+    if ([element isKindOfClass:[BAAFile class]]) {
+    
+        BAAFile *file = (BAAFile *)element;
+        path = [NSString stringWithFormat:@"file/%@/%@/role/%@", file.fileId, accessType, role];
+        
+    } else {
+    
+        BAAObject *object = (BAAObject *)element;
+        path = [NSString stringWithFormat:@"%@/%@/%@/role/%@", object.collectionName, object.objectId, accessType, role];
+        
+    }
+    
+    return path;
+    
+}
+
+- (NSString *) buildPathForUserACL:(id)element forAccessType:(NSString *)accessType username:(NSString *)name {
+    
+    NSString *path;
+    
+    if ([element isKindOfClass:[BAAFile class]]) {
+        
+        BAAFile *file = (BAAFile *)element;
+        path = [NSString stringWithFormat:@"file/%@/%@/user/%@", file.fileId, accessType, name];
+        
+    } else {
+        
+        BAAObject *object = (BAAObject *)element;
+        path = [NSString stringWithFormat:@"%@/%@/%@/user/%@", object.collectionName, object.objectId, accessType, name];
+        
+    }
+    
+    return path;
     
 }
 
@@ -940,7 +1029,7 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
            } failure:^(NSError *error) {
                
                if (completionBlock) {
-                   completionBlock(NO, error);
+                   completionBlock(nil, error);
                }
                
            }];
@@ -1056,9 +1145,29 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
 
 - (void) askToEnablePushNotifications {
     
-    [[UIApplication sharedApplication] registerForRemoteNotificationTypes:
-     (UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound | UIRemoteNotificationTypeAlert)];
+#if TARGET_OS_IPHONE
     
+    #if __IPHONE_OS_VERSION_MIN_REQUIRED > 70000
+        
+        UIUserNotificationSettings *settings =
+        [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert |UIUserNotificationTypeBadge |  UIUserNotificationTypeSound
+                                          categories:nil];
+        [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
+        [[UIApplication sharedApplication] registerForRemoteNotifications];
+        
+    #else
+        
+        [[UIApplication sharedApplication] registerForRemoteNotificationTypes:
+         (UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeSound | UIRemoteNotificationTypeAlert)];
+        
+    #endif
+    
+#else
+    
+    [[NSApplication sharedApplication] registerForRemoteNotificationTypes:
+     (NSRemoteNotificationTypeBadge | NSRemoteNotificationTypeSound | NSRemoteNotificationTypeAlert)];
+    
+#endif
 }
 
 - (void) enablePushNotifications:(NSData *)tokenData completion:(BAABooleanResultBlock)completionBlock {
@@ -1100,7 +1209,6 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
               
           } failure:^(NSError *error) {
               
-              NSLog(@"error %@", error);
               if (completionBlock) {
                   completionBlock(NO, error);
               }
@@ -1155,7 +1263,6 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
               
           } failure:^(NSError *error) {
               
-              NSLog(@"error %@", error);
               if (completionBlock) {
                   completionBlock(NO, error);
               }
@@ -1177,6 +1284,45 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     return deviceID;
 }
 
+- (void)pushNotificationToUsername:(NSString *)username
+                       withMessage:(NSString *)message
+                        completion:(BAABooleanResultBlock)completionBlock {
+    
+    [self pushNotificationToUsername:username
+                         withMessage:message
+                       customPayload:nil
+                          completion:completionBlock];
+}
+
+- (void)pushNotificationToUsername:(NSString *)username
+                       withMessage:(NSString *)message
+                     customPayload:(NSDictionary *)customPayload
+                        completion:(BAABooleanResultBlock)completionBlock {
+    
+    NSString *path = [NSString stringWithFormat:@"/push/message/%@", username];
+    NSMutableDictionary *parameters = [NSMutableDictionary dictionaryWithObject:message forKey:kPushNotificationMessageKey];
+    
+    if (customPayload) {
+        [parameters setObject:customPayload forKey:kPushNotificationCustomPayloadKey];
+    }
+    
+    BAAClient *client = [BAAClient sharedClient];
+    [client postPath:path
+          parameters:parameters
+             success:^(id responseObject) {
+                 
+                 if (completionBlock) {
+                     completionBlock(YES, nil);
+                 }
+                 
+             } failure:^(NSError *error) {
+                 
+                 if (completionBlock) {
+                     completionBlock(NO, error);
+                 }
+                 
+             }];
+}
 
 #pragma mark - Admin
 
@@ -1505,18 +1651,51 @@ NSString* const BAAUserKeyForUserDefaults = @"com.baaxbox.user";
     
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     NSData *decodedUser = [defaults objectForKey:BAAUserKeyForUserDefaults];
-    BAAUser *user = (BAAUser *)[NSKeyedUnarchiver unarchiveObjectWithData:decodedUser];
-    return user;
+
+    if (decodedUser) {
+
+      BAAUser *user = (BAAUser *)[NSKeyedUnarchiver unarchiveObjectWithData:decodedUser];
+      return user;
+
+    } else {
+
+      return nil;
+      
+    }
+    
     
 }
 
-- (void) updateUserWithDictionary:(NSDictionary *) dictionary {
+- (void) updateUserWithDictionary:(NSDictionary *)dictionary {
     
-    self.currentUser.roles = dictionary[@"data"][@"user"][@"roles"];
-    self.currentUser.visibleByTheUser = dictionary[@"data"][@"visibleByTheUser"];
-    self.currentUser.visibleByFriends = dictionary[@"data"][@"visibleByFriends"];
-    self.currentUser.visibleByRegisteredUsers = dictionary[@"data"][@"visibleByRegisteredUsers"];
-    self.currentUser.visibleByAnonymousUsers = dictionary[@"data"][@"visibleByAnonymousUsers"];
+    NSDictionary *dataDictionary = dictionary[@"data"];
+    self.currentUser.roles = dataDictionary[@"user"][@"roles"];
+    self.currentUser.status = dataDictionary[@"user"][@"status"];
+    
+    self.currentUser.visibleByAnonymousUsers = [NSMutableDictionary dictionaryWithDictionary:dataDictionary[@"visibleByAnonymousUsers"]];
+    self.currentUser.visibleByRegisteredUsers = [NSMutableDictionary dictionaryWithDictionary:dataDictionary[@"visibleByRegisteredUsers"]];
+    
+    if (dictionary[@"visibleByFriends"] == [NSNull null]) {
+        
+        self.currentUser.visibleByFriends = [NSMutableDictionary dictionary];
+        
+    } else {
+        
+        self.currentUser.visibleByFriends = [NSMutableDictionary dictionaryWithDictionary:dataDictionary[@"visibleByFriends"]];
+        
+    }
+    
+    if (dictionary[@"visibleByTheUser"] == [NSNull null]) {
+        
+        self.currentUser.visibleByTheUser = [NSMutableDictionary dictionary];
+        
+    } else {
+        
+        self.currentUser.visibleByTheUser = [NSMutableDictionary dictionaryWithDictionary:dataDictionary[@"visibleByTheUser"]];
+        
+    }
+
+    [self saveUserToDisk:self.currentUser];
     
 }
 

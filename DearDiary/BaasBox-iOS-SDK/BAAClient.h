@@ -38,6 +38,14 @@
                       password:(NSString *)password
                     completion:(BAABooleanResultBlock)completionBlock;
 
+- (void)createUserWithUsername:(NSString *)username
+                      password:(NSString *)password
+              visibleByTheUser:(NSDictionary *)visibleByTheUser
+              visibleByFriends:(NSDictionary *)visibleByFriends
+      visibleByRegisteredUsers:(NSDictionary *)visibleByRegisteredUsers
+       visibleByAnonymousUsers:(NSDictionary *)visibleByAnonymousUsers
+                    completion:(BAABooleanResultBlock)completionBlock;
+
 - (BOOL) isAuthenticated;
 
 - (void) logoutWithCompletion:(BAABooleanResultBlock)completionBlock;
@@ -54,10 +62,15 @@
 // Deleting
 - (void) deleteObject:(BAAObject *)object completion:(BAABooleanResultBlock)completionBlock;
 
+// Counting
+- (void) fetchCountForObjects:(BAAObject *)object completion:(BAAIntegerResultBlock)completionBlock;
+
 // Push notifications
 - (void) askToEnablePushNotifications;
 - (void) enablePushNotifications:(NSData *)token completion:(BAABooleanResultBlock)completionBlock;
 - (void) disablePushNotificationsWithCompletion:(BAABooleanResultBlock)completionBlock;
+- (void) pushNotificationToUsername:(NSString *)username withMessage:(NSString *)message completion:(BAABooleanResultBlock)completionBlock;
+- (void) pushNotificationToUsername:(NSString *)username withMessage:(NSString *)message customPayload:(NSDictionary *)customPayload completion:(BAABooleanResultBlock)completionBlock;
 
 // Files
 - (void) loadFiles:(BAAFile *)file completion:(BAAArrayResultBlock)completionBlock;
@@ -81,10 +94,10 @@
 - (void) unfollowUser:(BAAUser *)user completion:(BAABooleanResultBlock)completionBlock;
 
 // Acl
-- (void) grantAccess:(BAAFile *)file toRole:(NSString *)roleName accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock;
-- (void) grantAccess:(BAAFile *)file toUser:(NSString *)username accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock;
-- (void) revokeAccess:(BAAFile *)file toRole:(NSString *)roleName accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock;
-- (void) revokeAccess:(BAAFile *)file toUser:(NSString *)username accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock;
+- (void) grantAccess:(id)element toRole:(NSString *)roleName accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock;
+- (void) grantAccess:(id)element toUser:(NSString *)username accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock;
+- (void) revokeAccess:(id)element toRole:(NSString *)roleName accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock;
+- (void) revokeAccess:(id)element toUser:(NSString *)username accessType:(NSString *)access completion:(BAAObjectResultBlock)completionBlock;
 
 // Password
 - (void) changeOldPassword:(NSString *)oldPassword toNewPassword:(NSString *)newPassword completion:(BAABooleanResultBlock)completionBlock;
@@ -95,6 +108,7 @@
 - (void) loadSettingsWithCompletion:(BAAObjectResultBlock)completionBlock;
 - (void) loadSettingsSection:(NSString *)sectionName completion:(BAAObjectResultBlock)completionBlock;
 - (void) setValue:(NSString *)value forKey:(NSString *)key inSection:(NSString *)sectionName completion:(BAAObjectResultBlock)completionBlock;
+
 
 // Core methods
 - (void)getPath:(NSString *)path
@@ -117,6 +131,7 @@
            success:(void (^)(id responseObject))success
            failure:(void (^)(NSError *error))failure;
 
+- (void) saveUserToDisk:(BAAUser *)user;
 
 // Pagination constants
 extern NSString * const kPageNumberKey;
@@ -132,7 +147,11 @@ extern NSString * const kAclAdministratorRole;
 extern NSString * const kAclReadPermission;
 extern NSString * const kAclDeletePermission;
 extern NSString * const kAclUpdatePermission;
+extern NSString * const kAclAllPermission;
 
+// Push Notification constants
+extern NSString * const kPushNotificationMessageKey;
+extern NSString * const kPushNotificationCustomPayloadKey;
 
 
 

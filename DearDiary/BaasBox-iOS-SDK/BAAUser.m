@@ -30,6 +30,8 @@
 
 }
 
+@property (nonatomic, copy) NSMutableDictionary *user;
+
 @end
 
 @implementation BAAUser
@@ -41,12 +43,31 @@
     
     if (self) {
         
-        _username = dict[@"user"][@"name"];
+        _user = dict[@"user"];
         _roles = dict[@"user"][@"roles"];
-        _visibleByAnonymousUsers = dict[@"visibleByAnonymousUsers"];
-        _visibleByFriends = dict[@"visibleByFriend"];
-        _visibleByRegisteredUsers = dict[@"_visibleByRegisteredUsers"];
-        _visibleByTheUser = dict[@"_visibleByTheUser"];
+        _status = dict[@"user"][@"status"];
+        _visibleByAnonymousUsers = [NSMutableDictionary dictionaryWithDictionary:dict[@"visibleByAnonymousUsers"]];
+        _visibleByRegisteredUsers = [NSMutableDictionary dictionaryWithDictionary:dict[@"visibleByRegisteredUsers"]];
+        
+        if (dict[@"visibleByFriends"] == [NSNull null]) {
+            
+            _visibleByFriends = [NSMutableDictionary dictionary];
+            
+        } else {
+            
+            _visibleByFriends = [NSMutableDictionary dictionaryWithDictionary:dict[@"visibleByFriends"]];
+            
+        }
+        
+        if (dict[@"visibleByTheUser"] == [NSNull null]) {
+            
+            _visibleByTheUser = [NSMutableDictionary dictionary];
+            
+        } else {
+            
+            _visibleByTheUser = [NSMutableDictionary dictionaryWithDictionary:dict[@"visibleByTheUser"]];
+            
+        }
         
     }
     
@@ -105,6 +126,42 @@
     
 }
 
++ (void) loadRandomUserWithCompletion:(BAAArrayResultBlock)completionBlock {
+    
+    if (completionBlock) {
+        
+        [self loadUsersWithParameters:@{} completion:^(NSArray *users, NSError *error) {
+            
+            if (error == nil) {
+                
+                if (users.count <= 1) {
+                    
+                    // This is the edge case where this user is the only user.
+                    completionBlock(@[],  nil);
+                    
+                } else {
+                    
+                    BAAUser *currentUser = [[BAAClient sharedClient] currentUser];
+                    BAAUser *randomUser;
+                    
+                    do {
+                        
+                        NSInteger randomIndex = arc4random_uniform((u_int32_t)users.count);
+                        randomUser = users[randomIndex];
+                        
+                    } while ([randomUser.username isEqualToString:currentUser.username]);  // Ensures that the random user is not the current user.
+                    
+                    completionBlock([NSArray arrayWithObject:randomUser], nil);
+                    
+                }
+                
+            } else {
+                completionBlock(nil, error);
+            }
+        }];
+    }
+}
+
 + (void) loadUserDetails:(NSString *)username completion:(BAAObjectResultBlock)completionBlock {
 
     BAAClient *client = [BAAClient sharedClient];
@@ -138,10 +195,149 @@
     [client loadFollowersOfUser:self
                       completion:^(NSArray *users, NSError *error) {
                           
-                          if (completionBlock)
+                          if (completionBlock) {
                               completionBlock(users, error);
+                          }
                           
                       }];
+    
+}
+
+#pragma mark - Social
+
++ (void) loginWithFacebookToken:(NSString *)token completion:(BAABooleanResultBlock)completionBlock {
+    
+    BAAClient *client = [BAAClient sharedClient];
+    [client postPath:@"/social/facebook"
+          parameters:@{@"oauth_token":token, @"oauth_secret":token}
+             success:^(id responseObject) {
+                 
+                 BAAUser *user = [[BAAUser alloc] initWithDictionary:responseObject[@"data"]];
+                 user.authenticationToken = responseObject[@"data"][@"X-BB-SESSION"];
+                 client.currentUser = user;
+                 [client saveUserToDisk:user];
+                 if (completionBlock) {
+                     completionBlock(YES, nil);
+                 }
+                 
+             } failure:^(NSError *error) {
+                 
+                 if (completionBlock) {
+                     completionBlock(NO, error);
+                 }
+                 
+             }];
+    
+}
+
+- (void) linkToFacebookWithToken:(NSString *)token completion:(BAABooleanResultBlock)completionBlock {
+    
+    BAAClient *client = [BAAClient sharedClient];
+    [client putPath:@"/social/facebook"
+         parameters:@{@"oauth_token":token, @"oauth_secret":token}
+            success:^(id responseObject) {
+                if (completionBlock) {
+                    completionBlock(YES, nil);
+                }
+            } failure:^(NSError *error) {
+                if (completionBlock) {
+                    completionBlock(NO, error);
+                }
+            }];
+
+}
+
+- (void) unlinkFromFacebookWithCompletion:(BAABooleanResultBlock)completionBlock {
+
+    BAAClient *client = [BAAClient sharedClient];
+    [client deletePath:@"/social/facebook"
+            parameters:nil
+               success:^(id responseObject) {
+                   if (completionBlock) {
+                       completionBlock(YES, nil);
+                   }
+               } failure:^(NSError *error) {
+                   if (completionBlock) {
+                       completionBlock(NO, error);
+                   }
+               }];
+    
+}
+
++ (void) loginWithGoogleToken:(NSString *)token completion:(BAABooleanResultBlock)completionBlock {
+
+    BAAClient *client = [BAAClient sharedClient];
+    [client postPath:@"/social/google"
+          parameters:@{@"oauth_token":token, @"oauth_secret":token}
+             success:^(id responseObject) {
+                 
+                 BAAUser *user = [[BAAUser alloc] initWithDictionary:responseObject[@"data"]];
+                 user.authenticationToken = responseObject[@"data"][@"X-BB-SESSION"];
+                 client.currentUser = user;
+                 [client saveUserToDisk:user];
+                 if (completionBlock) {
+                     completionBlock(YES, nil);
+                 }
+                 
+             } failure:^(NSError *error) {
+                 
+                 if (completionBlock) {
+                     completionBlock(NO, error);
+                 }
+                 
+             }];
+    
+}
+
+- (void) linkToGoogleWithToken:(NSString *)token completion:(BAABooleanResultBlock)completionBlock {
+    
+    BAAClient *client = [BAAClient sharedClient];
+    [client putPath:@"/social/google"
+         parameters:@{@"oauth_token":token, @"oauth_secret":token}
+            success:^(id responseObject) {
+                if (completionBlock) {
+                    completionBlock(YES, nil);
+                }
+            } failure:^(NSError *error) {
+                if (completionBlock) {
+                    completionBlock(NO, error);
+                }
+            }];
+    
+}
+
+- (void) unlinkFromGoogleWithCompletion:(BAABooleanResultBlock)completionBlock {
+
+    BAAClient *client = [BAAClient sharedClient];
+    [client deletePath:@"/social/google"
+            parameters:nil
+               success:^(id responseObject) {
+                   if (completionBlock) {
+                       completionBlock(YES, nil);
+                   }
+               } failure:^(NSError *error) {
+                   if (completionBlock) {
+                       completionBlock(NO, error);
+                   }
+               }];
+    
+}
+
+- (void) fetchLinkedSocialNetworksWithCompletion:(BAAArrayResultBlock)completionBlock {
+    
+    BAAClient *client = [BAAClient sharedClient];
+    [client getPath:@"/social"
+         parameters:nil
+            success:^(id responseObject) {
+                if (completionBlock) {
+                    NSArray *res = responseObject[@"data"];
+                    completionBlock(res, nil);
+                }
+            } failure:^(NSError *error) {
+                if(completionBlock) {
+                    completionBlock(nil, error);
+                }
+            }];
     
 }
 
@@ -230,7 +426,6 @@
     }
     
     free(propertyList);
-    //    NSLog(@"result is %@", result);
     return [NSDictionary dictionaryWithDictionary:result];
     
 }
@@ -249,8 +444,9 @@
 
 - (NSMutableDictionary *) visibleByAnonymousUsers {
     
-    if (_visibleByAnonymousUsers == nil)
+    if (_visibleByAnonymousUsers == nil) {
         _visibleByAnonymousUsers = [NSMutableDictionary dictionary];
+    }
     
     return _visibleByAnonymousUsers;
     
@@ -258,8 +454,9 @@
 
 - (NSMutableDictionary *) visibleByTheUser {
     
-    if (_visibleByTheUser == nil)
+    if (_visibleByTheUser == nil) {
         _visibleByTheUser = [NSMutableDictionary dictionary];
+    }
     
     return _visibleByTheUser;
     
@@ -267,8 +464,9 @@
 
 - (NSMutableDictionary *) visibleByFriends {
     
-    if (_visibleByFriends == nil)
+    if (_visibleByFriends == nil) {
         _visibleByFriends = [NSMutableDictionary dictionary];
+    }
     
     return _visibleByFriends;
     
@@ -276,14 +474,21 @@
 
 - (NSMutableDictionary *) visibleByRegisteredUsers {
     
-    if (_visibleByRegisteredUsers == nil)
+    if (_visibleByRegisteredUsers == nil) {
         _visibleByRegisteredUsers = [NSMutableDictionary dictionary];
+    }
     
     return _visibleByRegisteredUsers;
     
 }
 
--(NSString *)description {
+- (NSString *) username {
+    
+    return self.user[@"name"];
+    
+}
+
+- (NSString *)description {
     
     return [[self objectAsDictionary] description];
     
@@ -297,10 +502,14 @@
     
     if(self) {
         
-        decodeObject(_username);
+        decodeObject(_user);
         decodeObject(_authenticationToken);
         decodeObject(_pushNotificationToken);
         decodeBool(_pushEnabled);
+        decodeObject(_visibleByAnonymousUsers);
+        decodeObject(_visibleByRegisteredUsers);
+        decodeObject(_visibleByFriends);
+        decodeObject(_visibleByTheUser);
         
     }
     
@@ -310,10 +519,14 @@
 
 - (void)encodeWithCoder:(NSCoder *)aCoder {
     
-    encodeObject(_username);
+    encodeObject(_user);
     encodeObject(_authenticationToken);
     encodeObject(_pushNotificationToken);
     encodeBool(_pushEnabled);
+    encodeObject(_visibleByAnonymousUsers);
+    encodeObject(_visibleByRegisteredUsers);
+    encodeObject(_visibleByFriends);
+    encodeObject(_visibleByTheUser);
     
 }
 

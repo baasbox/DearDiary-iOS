@@ -50,11 +50,35 @@
 
 + (NSError *)authenticationErrorForResponse:(NSDictionary *)response {
 
-    NSDictionary *errorDetail = @{NSLocalizedDescriptionKey:response[@"message"]};
+    if (response == nil) {
+        NSDictionary *errorDetail = @{NSLocalizedDescriptionKey:@"Server returned an empty response.",
+                                      @"BaasBox API Version": @[response[@"API_version"]],
+                                      @"iOS SDK Version" : VERSION};
+        return [NSError errorWithDomain:[BaasBox errorDomain]
+                                   code:-22222
+                               userInfo:errorDetail];
+    }
+
+    NSDictionary *errorDetail = @{NSLocalizedDescriptionKey:response[@"message"],
+                                  @"BaasBox_API_version": @[response[@"API_version"]],
+                                  @"iOS SDK Version" : VERSION};
     NSError *error = [NSError errorWithDomain:[BaasBox errorDomain]
                                          code:-22222
                                      userInfo:errorDetail];
     return error;
+    
+}
+
++ (NSDateFormatter *)dateFormatter {
+    
+    static NSDateFormatter *_dateFormatter = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _dateFormatter = [[NSDateFormatter alloc] init];
+        [_dateFormatter setDateFormat:@"yyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"];
+    });
+    
+    return _dateFormatter;
     
 }
 
