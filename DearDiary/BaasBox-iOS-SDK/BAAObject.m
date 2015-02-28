@@ -107,6 +107,15 @@
     
 }
 
+- (void) saveObjectWithACL:(NSDictionary *)acl completion:(BAAObjectResultBlock)completionBlock {
+
+  NSAssert(acl != nil, @"ACL should not be nil, otherwise you will delete previously set ACLs.");
+  NSAssert(acl.allKeys.count > 0, @"ACL should not be empty, otherwise you will delete previously set ACLs.");
+  _acl = acl;
+  [self saveObjectWithCompletion:completionBlock];
+  
+}
+
 #pragma mark - ACL
 
 - (void) grantAccessToRole:(NSString *)roleName ofType:(NSString *)accessType completion:(BAAObjectResultBlock)completionBlock {
@@ -152,6 +161,10 @@
     
 }
 
+- (NSArray *)exclude {
+  return @[@"superclass", @"description", @"debugDescription"];
+}
+
 #pragma mark - Counter methods
 
 + (void) fetchCountForObjectsWithCompletion:(BAAIntegerResultBlock)completionBlock {
@@ -165,7 +178,7 @@
 #pragma mark - Helper methods
 
 - (NSDictionary*) objectAsDictionary {
-    
+  
     NSMutableDictionary *dict = [[NSMutableDictionary alloc] initWithCapacity:0];
     
     unsigned int outCount, i;
@@ -177,8 +190,9 @@
         objc_property_t property = properties[i];
         const char *propName = property_getName(property);
         
-        if(propName) {
-            NSString *propertyName = [NSString stringWithUTF8String:propName];
+        NSString *propertyName = [NSString stringWithUTF8String:propName];
+      
+        if (![self.exclude containsObject:propertyName]) {
             id value = [self valueForKey:propertyName];
             
             if ([value isKindOfClass:[NSArray class]]) {
@@ -216,10 +230,15 @@
                 
             }
         }
+      
     }
     
     free(properties);
-    
+  
+    if (self.acl) {
+      [dict addEntriesFromDictionary:self.acl];
+    }
+  
     return dict;
     
 }
