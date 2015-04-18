@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		BD2BF06417F43F470087DEBA /* TrafficLight.m in Sources */ = {isa = PBXBuildFile; fileRef = BD2BF06317F43F470087DEBA /* TrafficLight.m */; };
 		BDAC0CEF17F42EC700A58451 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BDAC0CEE17F42EC700A58451 /* Foundation.framework */; };
 		BDAC0CF117F42EC700A58451 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BDAC0CF017F42EC700A58451 /* CoreGraphics.framework */; };
 		BDAC0CF317F42EC700A58451 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BDAC0CF217F42EC700A58451 /* UIKit.framework */; };
@@ -51,8 +50,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		BD2BF06217F43F470087DEBA /* TrafficLight.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TrafficLight.h; sourceTree = "<group>"; };
-		BD2BF06317F43F470087DEBA /* TrafficLight.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TrafficLight.m; sourceTree = "<group>"; };
 		BDAC0CEB17F42EC700A58451 /* DearDiary.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DearDiary.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BDAC0CEE17F42EC700A58451 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		BDAC0CF017F42EC700A58451 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -190,8 +187,6 @@
 		BDAC0D1617F42EC700A58451 /* DearDiaryTests */ = {
 			isa = PBXGroup;
 			children = (
-				BD2BF06217F43F470087DEBA /* TrafficLight.h */,
-				BD2BF06317F43F470087DEBA /* TrafficLight.m */,
 				BDAC0D1C17F42EC700A58451 /* DearDiaryTests.m */,
 				BDAC0D1717F42EC700A58451 /* Supporting Files */,
 			);
@@ -357,7 +352,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BD2BF06417F43F470087DEBA /* TrafficLight.m in Sources */,
 				BDAC0D6217F4335A00A58451 /* SMLoginViewController.m in Sources */,
 				BDAC0D1D17F42EC700A58451 /* DearDiaryTests.m in Sources */,
 				BDAC0D2A17F42F4400A58451 /* SMPost.m in Sources */,
